@@ -2,6 +2,10 @@
 
 An interactive Dash application that analyzes media coverage of legendary rock guitarists across major music publications (2022-2025).
 
+**[👉 LIVE DEMO: View the App on PythonAnywhere](https://IvoDSBarros.pythonanywhere.com)** 🚀
+![Rock N' AI Dashboard](assets/app_intro.PNG)
+
+
 ## 📊 Data Pipeline
 
 The system collects and analyzes articles from six core publications:
