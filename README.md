@@ -4,7 +4,7 @@ An interactive Dash application that analyzes media coverage of legendary rock g
 
 **[👉 LIVE DEMO: View the App on PythonAnywhere](https://IvoDSBarros.pythonanywhere.com)** 🚀
 
-![Rock N' AI Dashboard](assets/https://github.com/IvoDSBarros/rock-n-ai/blob/699c9f579cb04e898708a033199d4eae1726034c/assets/images/app_intro.PNG)
+![Rock N' AI Dashboard](assets/https://github.com/IvoDSBarros/rock-n-ai/blob/699c9f579cb04e898708a033199d4eae1726034c)
 
 
 ## 📊 Data Pipeline
