@@ -26,6 +26,18 @@ Guitarists are identified via Named Entity Recognition, drawing from *Guitar Wor
 
 ## 🧠 Architecture: Pre-calculated Metrics + SMART RAG
 
+### NLP Processing Pipeline
+
+The data is processed through the following NLP stages:
+
+- **Rock Artist Identification**: A previous Named Entity Recognition (NER) model identifies rock artists to ensure genre accuracy.
+
+- **Guitarist Filtering**: The Rock Artist NER model is cross-referenced against *Guitar World's* '100 Greatest Guitarists' to isolate the featured icons.
+
+- **Text Classification**: A deep learning model assigns topic labels using a weakly supervised approach derived from an antecedent rule-based system.
+
+- **POS Tagging**: Part-of-Speech tagging separates nouns, verbs, and adjectives, enabling vocabulary profiling.
+
 ### Offline Pre-computation
 - Python scripts calculate all metrics: focus ratios, trends, category distributions, vocabulary profiles, network metrics
 - Results saved as JSON + Parquet for instant access
