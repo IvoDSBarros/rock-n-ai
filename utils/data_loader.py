@@ -3,7 +3,7 @@ import pandas as pd
 import json
 import os
 import ast
-from utils.config import ANALYSIS_TABLE_PATH, CREW_AI_NARRATIVE_PATH 
+from utils.config import ANALYSIS_TABLE_PATH, CREW_AI_NARRATIVE_PATH
 # from config import ANALYSIS_TABLE_PATH
 
 def get_guitarist_data():
@@ -11,7 +11,7 @@ def get_guitarist_data():
     try:
         if os.path.exists(ANALYSIS_TABLE_PATH):
             df_analysis = pd.read_parquet(ANALYSIS_TABLE_PATH)
-            
+
             if 'total_articles' in df_analysis.columns:
                 guitarist_data = df_analysis[['guitarist', 'total_articles']].copy()
                 guitarist_data = guitarist_data.dropna()
@@ -51,63 +51,63 @@ def get_top_guitarist():
 def get_data_bar_heatmap(view_id, guitarist):
     """Loads and processes data for a specific view."""
     from utils.config import VIEW_CONFIGS
-    
+
     if view_id not in VIEW_CONFIGS or VIEW_CONFIGS[view_id].get('is_landing'):
         view_id = 2
-    
+
     config = VIEW_CONFIGS[view_id]
     var_name_global = config['var_global']
     var_name_long = config['var_long']
-    
+
     if not os.path.exists(ANALYSIS_TABLE_PATH):
         print(f"Error: Data file not found: {ANALYSIS_TABLE_PATH}")
         empty_heatmap = pd.DataFrame()
         empty_global = pd.DataFrame(columns=['field', 'count'])
         return empty_heatmap, empty_global, 0, 0
-    
+
     try:
         df_analysis = pd.read_parquet(ANALYSIS_TABLE_PATH)
         df_analysis_subset = df_analysis[df_analysis['guitarist'] == guitarist]
-        
+
         if df_analysis_subset.empty:
             print(f"Warning: No data found for guitarist: {guitarist}")
             empty_heatmap = pd.DataFrame()
             empty_global = pd.DataFrame(columns=['field', 'count'])
             return empty_heatmap, empty_global, 0, 0
-        
+
         json_str_glob_cat = df_analysis_subset[var_name_global].iloc[0]
         df_global_cat = pd.DataFrame(json.loads(json_str_glob_cat))
         top5_pct = df_global_cat['relative_pct'].sum()
 
         possible_fields = ['members_tags', 'guitarist_tags', 'category_tags']
-        target_global_field = next((elem for elem in df_global_cat.columns if elem in possible_fields), 
+        target_global_field = next((elem for elem in df_global_cat.columns if elem in possible_fields),
                                   df_global_cat.columns[0])
-        
+
         list_unique_artists = df_global_cat[target_global_field].tolist()
 
         json_str_long_cat = df_analysis_subset[var_name_long].iloc[0]
         df_long_cat = pd.DataFrame(json.loads(json_str_long_cat))
         total_counts = df_long_cat['count'].sum()
         df_long_cat = df_long_cat[df_long_cat[target_global_field].isin(list_unique_artists)]
-        
+
         global_mentions = df_global_cat.sort_values(by='count', ascending=True).tail(10)
         bar_chart_order = global_mentions[target_global_field].tolist()
-        
+
         heatmap_data = df_long_cat.pivot_table(
-            index=target_global_field, 
-            columns='year_quarter', 
-            values='count', 
-            aggfunc='sum', 
+            index=target_global_field,
+            columns='year_quarter',
+            values='count',
+            aggfunc='sum',
             fill_value=0
         )
-        
+
         heatmap_data = heatmap_data.reindex(bar_chart_order)
-        
+
         if len(heatmap_data) > 12:
             heatmap_data = heatmap_data.head(12)
-            
+
         return heatmap_data, global_mentions, total_counts, top5_pct
-    
+
     except Exception as e:
         print(f"Error loading data for view {view_id}: {str(e)}")
         import traceback
@@ -119,31 +119,40 @@ def get_data_bar_heatmap(view_id, guitarist):
 def get_guitarist_metrics_intro(guitarist):
     """Loads and processes data for a specific guitarist.
     Returns tuple: (intro_metrics_dict, ratios_df)"""
-    
+
     if not os.path.exists(ANALYSIS_TABLE_PATH):
         print(f"Error: Data file not found: {ANALYSIS_TABLE_PATH}")
         return {}, None
-    
+
     try:
         df_analysis = pd.read_parquet(ANALYSIS_TABLE_PATH)
         df_analysis_subset = df_analysis[df_analysis['guitarist'] == guitarist]
-        
+
         if df_analysis_subset.empty:
             print(f"Warning: No data found for guitarist: {guitarist}")
             return {}, None
-        
+
         # Extract json columns and convert to dicts
         guitarist_md_json = df_analysis_subset["guitarist_md_json"].iloc[0]
         guitarist_md_dict = eval(guitarist_md_json)
-        
+
         ratios_json = df_analysis_subset["ratios_json"].iloc[0]
         ratios_dict = eval(ratios_json)
-        
+
         overall_metrics_json = df_analysis_subset["overall_metrics_json"].iloc[0]
         overall_metrics_dict = eval(overall_metrics_json)
-        
-        network_metrics = df_analysis_subset["network_metrics"].iloc[0]
-        
+
+        if 'network_metrics' in df_analysis_subset.columns:
+            # This only runs with pyarrow
+            network_metrics = df_analysis_subset["network_metrics"].iloc[0]
+        else:
+            # This runs with fastparquet
+            network_metrics = {}
+            for col in df_analysis_subset.columns:
+                if col.startswith('network_metrics.'):
+                    key = col[16:]
+                    network_metrics[key] = df_analysis_subset[col].iloc[0]
+
         intro_metrics = (
             {'guitarist': guitarist}
             | guitarist_md_dict
@@ -159,14 +168,14 @@ def get_guitarist_metrics_intro(guitarist):
             }
             | network_metrics
         )
-        
+
         # Create ratios dataframe for the stacked bar chart
         ratios_data = {
             'category': ['Solo Focus', 'Guitarist Focus', 'Cross-Artist Focus'],
-            'label': ['Solo', 'Guitarist', 'Cross-Artist'],  
+            'label': ['Solo', 'Guitarist', 'Cross-Artist'],
             'ratio': [
-                ratios_dict.get('solo_focus_ratio', 0),  
-                ratios_dict.get('guitar_focus_ratio', 0), 
+                ratios_dict.get('solo_focus_ratio', 0),
+                ratios_dict.get('guitar_focus_ratio', 0),
                 ratios_dict.get('cross_artist_focus_ratio', 0)
             ],
             'percentage': [
@@ -175,27 +184,27 @@ def get_guitarist_metrics_intro(guitarist):
                 ratios_dict.get('cross_artist_focus_ratio', 0) * 100
             ],
             'color': ['#94A3B8', '#3B82F6', '#1E40AF']
-        } 
-        
+        }
+
         ratios_df = pd.DataFrame(ratios_data)
-        
+
         return intro_metrics, ratios_df
-    
+
     except Exception as e:
         print(f"Error loading data for guitarist {guitarist}: {str(e)}")
         import traceback
         traceback.print_exc()
         return {}, None
-    
+
 def get_media_focus_solo(guitarist):
     """Loads and processes data, merging categories into a 2-way 'Ghost' narrative."""
     if not os.path.exists(ANALYSIS_TABLE_PATH):
         return pd.DataFrame()
-    
+
     try:
         df_analysis = pd.read_parquet(ANALYSIS_TABLE_PATH)
         df_analysis_subset = df_analysis[df_analysis['guitarist'] == guitarist]
-        
+
         if df_analysis_subset.empty:
             return pd.DataFrame()
 
@@ -205,8 +214,8 @@ def get_media_focus_solo(guitarist):
 
         # Melt into a long format for processing
         df_long = df_longitudinal_ratios.melt(
-            id_vars=['year_quarter'], 
-            var_name='raw_key', 
+            id_vars=['year_quarter'],
+            var_name='raw_key',
             value_name='ratio_value'
         )
 
@@ -218,20 +227,20 @@ def get_media_focus_solo(guitarist):
         df_final = df_long.groupby(['year_quarter', 'ratio_category'], as_index=False)['ratio_value'].sum()
 
         color_map = {
-            'Solo Focus': '#94A3B8', 
+            'Solo Focus': '#94A3B8',
             'Other Narrative Focus': '#3B82F6'
         }
         df_final['color'] = df_final['ratio_category'].map(color_map)
 
         # Force stacking order
         df_final['ratio_category'] = pd.Categorical(
-            df_final['ratio_category'], 
-            categories=['Solo Focus', 'Other Narrative Focus'], 
+            df_final['ratio_category'],
+            categories=['Solo Focus', 'Other Narrative Focus'],
             ordered=True
         )
 
         return df_final.sort_values(['year_quarter', 'ratio_category'])
-    
+
     except Exception as e:
         print(f"Loader Error: {e}")
         return pd.DataFrame()
@@ -240,11 +249,11 @@ def get_vocabulary_profile(guitarist):
     """Loads and processes vocabulary related data"""
     if not os.path.exists(ANALYSIS_TABLE_PATH):
         return pd.DataFrame()
-    
+
     try:
         df_analysis = pd.read_parquet(ANALYSIS_TABLE_PATH)
         df_analysis_subset = df_analysis[df_analysis['guitarist'] == guitarist]
-        
+
         if df_analysis_subset.empty:
             return pd.DataFrame()
 
@@ -253,14 +262,14 @@ def get_vocabulary_profile(guitarist):
         df_vocabulary_profile = pd.DataFrame(json.loads(vocabulary_profile_json))
 
         return df_vocabulary_profile
-    
+
     except Exception as e:
         print(f"Loader Error: {e}")
         return pd.DataFrame()
 
 def get_guitarist_media_flow(guitarist):
     """Retrieves the narrative flow for a specific guitarist.
-    Returns list of path records with website, editorial_format, media_focus, 
+    Returns list of path records with website, editorial_format, media_focus,
     artist_density, topic_depth, and count.
     """
     if not os.path.exists(ANALYSIS_TABLE_PATH):
@@ -269,13 +278,13 @@ def get_guitarist_media_flow(guitarist):
     try:
         df_analysis = pd.read_parquet(ANALYSIS_TABLE_PATH)
         df_analysis_subset = df_analysis[df_analysis['guitarist'] == guitarist]
-        
+
         if df_analysis_subset.empty:
             return []
 
         # Load the specific json string from the subset
         raw_flow_data = df_analysis_subset["media_flow_json"].iloc[0]
-        
+
         if pd.isna(raw_flow_data) or raw_flow_data == "":
             return []
 
@@ -283,23 +292,23 @@ def get_guitarist_media_flow(guitarist):
         flow_data = ast.literal_eval(raw_flow_data)
 
         # Optional: Validate structure (each record should have the expected keys)
-        expected_keys = ['website', 'editorial_format', 'media_focus', 
+        expected_keys = ['website', 'editorial_format', 'media_focus',
                          'artist_density', 'topic_depth', 'count']
-        
+
         if flow_data and isinstance(flow_data, list):
             # Check first record to ensure structure
             first_record = flow_data[0]
             if not all(key in first_record for key in expected_keys):
                 print(f"Warning: Unexpected structure in media_flow_json for {guitarist}")
-        
+
         return flow_data
-    
+
     except Exception as e:
         print(f"Media Flow Loader Error: {e}")
         return []
 
 #------------------------------------------------------------------------------
-# CREW AI NARRATIVE 
+# CREW AI NARRATIVE
 #------------------------------------------------------------------------------
 # Global cache for all paragraphs
 _GUITARIST_NARRATIVES = None
@@ -309,23 +318,23 @@ def load_crew_ai_narrative(force_reload=False):
     Load Crew AI narratives from the JSON file.
     """
     global _GUITARIST_NARRATIVES
-    
+
     if _GUITARIST_NARRATIVES is not None and not force_reload:
         return _GUITARIST_NARRATIVES
-    
+
     if not os.path.exists(CREW_AI_NARRATIVE_PATH):
         print(f"Narrative file not found: {CREW_AI_NARRATIVE_PATH}")
         return []
-    
+
     try:
         with open(CREW_AI_NARRATIVE_PATH, 'r', encoding='utf-8') as f:
             data = json.load(f)
-        
+
         # Extract the paragraphs array
         _GUITARIST_NARRATIVES = data.get('paragraphs', [])
         print(f"Loaded {len(_GUITARIST_NARRATIVES)} paragraphs")
         return _GUITARIST_NARRATIVES
-        
+
     except Exception as e:
         print(f"Error loading {CREW_AI_NARRATIVE_PATH}: {e}")
         return []
@@ -336,19 +345,19 @@ def get_guitarist_narrative(guitarist, view_id):
     Returns list of paragraph texts in correct order.
     """
     narratives = load_crew_ai_narrative()
-    
+
     if not narratives:
         return []
-    
+
     # Filter by guitarist and view
     filtered = [
-        p for p in narratives 
+        p for p in narratives
         if p.get('guitarist') == guitarist and p.get('view') == view_id
     ]
-    
+
     # Sort by paragraph number
     filtered.sort(key=lambda x: x.get('paragraph', 0))
-    
+
     # Return just the text in order
     return [p.get('text', '') for p in filtered]
 
@@ -359,9 +368,9 @@ def create_narrative_paragraphs(paragraph_texts, guitarist_name, max_paragraphs=
     """
     from dash import html, dcc
     from utils import FONT_FAMILY, NEUTRAL_600
-    
+
     ai_content = []
-    
+
     for para_text in paragraph_texts[:max_paragraphs]:
         if para_text.strip():
             ai_content.append(
@@ -382,7 +391,7 @@ def create_narrative_paragraphs(paragraph_texts, guitarist_name, max_paragraphs=
                     }
                 )
             )
-    
+
     return ai_content or [
         html.Div(
             f"No narrative available for {guitarist_name}",

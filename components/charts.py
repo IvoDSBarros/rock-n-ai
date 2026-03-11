@@ -482,7 +482,7 @@ def create_wordcloud(df, pos_category='nouns'):
         children=[
             html.Div(
                 style={
-                    'width': '640px',
+                    'width': '600px',
                     'height': '120px',
                     'margin': '0 auto'
                 },
@@ -490,7 +490,7 @@ def create_wordcloud(df, pos_category='nouns'):
                     DashWordcloud(
                         id=f'wordcloud-{pos_category}',
                         list=words_list,
-                        width=640,
+                        width=600,
                         height=120,
                         gridSize=8,
                         color=color,

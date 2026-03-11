@@ -12,7 +12,7 @@ from views.view7_vocabulary_profile import create_vocabulary_profile_view
 from views.view8_media_flow import create_media_flow_view
 
 app = Dash(__name__, suppress_callback_exceptions=True)
-server = app.server  # ← Expose the server for deployment
+server = app.server
 
 DEFAULT_GUITARIST = get_top_guitarist()
 nav_state = {'current_view': 1, 'current_guitarist': DEFAULT_GUITARIST}
@@ -21,7 +21,7 @@ def get_view_layout(view_id, selected_guitarist):
     """Get layout for specific view and guitarist."""
     nav_state['current_guitarist'] = selected_guitarist
     nav_state['current_view'] = view_id
-    
+
     if view_id == 1:
         return create_view_1_landing(selected_guitarist)
     if view_id == 2:
@@ -43,11 +43,12 @@ def get_view_layout(view_id, selected_guitarist):
 app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     html.Div(id='page-content'),
-    dcc.Store(id='selected-guitarist-store', data=DEFAULT_GUITARIST)
+    dcc.Store(id='selected-guitarist-store', data=DEFAULT_GUITARIST),
+    html.Div(id='dummy-output', style={'display': 'none'})
 ])
 
 #------------------------------------------------------------------------------
-# CALLBACKS
+# PYTHON CALLBACKS
 #------------------------------------------------------------------------------
 
 # 1. Update guitarist from chart click
@@ -79,7 +80,7 @@ def update_view_1_display(selected_guitarist):
 )
 def update_chart_highlight(selected_guitarist):
     from components.charts import create_guitarist_selection_chart
-    
+
     try:
         data = get_guitarist_data()
         return create_guitarist_selection_chart(data, selected_guitarist)
@@ -96,48 +97,38 @@ def update_chart_highlight(selected_guitarist):
      Input('selected-guitarist-store', 'data')],
     prevent_initial_call=True
 )
-
 def handle_navigation(pathname, nav_clicks, selected_guitarist):
     ctx = callback_context
-    
+
     if not ctx.triggered:
         return get_view_layout(1, DEFAULT_GUITARIST)
-    
+
     trigger = ctx.triggered[0]
     prop_id = trigger['prop_id']
-    
+
     if 'selected-guitarist-store' in prop_id:
         nav_state['current_guitarist'] = selected_guitarist
-    
+
     if 'url' in prop_id:
         nav_state['current_view'] = 1
         return get_view_layout(1, selected_guitarist)
-    
+
     if 'nav-btn' in prop_id:
         button_info = json.loads(prop_id.split('.')[0])
         action = button_info.get('action')
-        
-        # Custom navigation rules
+
         if action == 'prev':
-            # Can always go to previous view (1 step back)
             if nav_state['current_view'] > 1:
                 nav_state['current_view'] -= 1
-        
         elif action == 'next':
             current = nav_state['current_view']
-            
-            # Rule 1: From last view, next goes to view 1 (Landing)
             if current == LAST_VIEW_ID:
                 nav_state['current_view'] = 1
-            
-            # Rule 2: From view 1, next only goes to view 2 (Intro)
             elif current == 1:
                 nav_state['current_view'] = 2
-            
-            # Normal navigation for views 2 through LAST_VIEW_ID-1
             elif current < LAST_VIEW_ID:
                 nav_state['current_view'] += 1
-    
+
     return get_view_layout(nav_state['current_view'], nav_state['current_guitarist'])
 
 # 5. Initial page load
@@ -168,7 +159,7 @@ app.index_string = f'''
                 padding: 0;
                 box-sizing: border-box;
             }}
-            
+
             html, body {{
                 height: 100%;
                 width: 100%;
@@ -182,7 +173,7 @@ app.index_string = f'''
                 -webkit-font-smoothing: antialiased;
                 -moz-osx-font-smoothing: grayscale;
             }}
-            
+
             #react-entry-point {{
                 height: 100vh !important;
                 width: 100vw !important;
@@ -193,24 +184,74 @@ app.index_string = f'''
                 right: 0 !important;
                 bottom: 0 !important;
             }}
-            
+
             button {{
                 transition: all 0.2s ease !important;
             }}
-            
+
             [id*="nav-btn"]:hover {{
                 transform: scale(1.05);
             }}
-            
+
             button:disabled {{
                 opacity: 0.5 !important;
                 cursor: not-allowed !important;
             }}
-            
+
             button:disabled:hover {{
                 transform: none !important;
             }}
-            
+
+            /* ===== MOBILE/TABLET WARNING ===== */
+            .device-warning {{
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background-color: rgba(0, 0, 0, 0.95);
+                z-index: 10000;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+                box-sizing: border-box;
+                font-family: {FONT_FAMILY};
+                text-align: center;
+            }}
+
+            /* Show on screens smaller than 1024px (tablets and phones) */
+            @media (max-width: 1024px) {{
+                .device-warning {{
+                    display: flex !important;
+                }}
+                #page-content {{
+                    display: none !important;
+                }}
+            }}
+
+            .device-warning h2 {{
+                color: white;
+                margin-bottom: 15px;
+                font-size: 24px;
+            }}
+
+            .device-warning p {{
+                color: white;
+                text-align: center;
+                margin-bottom: 0;
+                max-width: 400px;
+                line-height: 1.6;
+                font-size: 16px;
+            }}
+
+            .device-warning .icon {{
+                font-size: 60px;
+                margin-bottom: 20px;
+            }}
+            /* ===== END OF DEVICE WARNING STYLES ===== */
+
             /* ===== TOOLTIP STYLES ===== */
             [id^="info-tooltip-"] {{
                 visibility: hidden !important;
@@ -219,83 +260,90 @@ app.index_string = f'''
                 pointer-events: auto !important;
                 z-index: 9999 !important;
             }}
-            
+
             [id^="info-icon-"]:hover + [id^="info-tooltip-"] {{
                 visibility: visible !important;
                 opacity: 1 !important;
             }}
-            
+
             [id^="info-tooltip-"]:hover {{
                 visibility: visible !important;
                 opacity: 1 !important;
             }}
-            
+
             [id^="info-icon-"]:hover {{
                 transform: scale(1.1) !important;
                 background-color: {BRAND_VIBRANT} !important;
                 cursor: help !important;
             }}
-            
+
             /* ===== NARRATIVE PANEL SCROLLBAR ===== */
             .ai-narrative-scrollable {{
                 scrollbar-width: thin !important;
                 scrollbar-color: #cbd5e1 #f1f5f9 !important;
             }}
-            
+
             .ai-narrative-scrollable::-webkit-scrollbar {{
                 width: 6px !important;
             }}
-            
+
             .ai-narrative-scrollable::-webkit-scrollbar-track {{
                 background: #f1f5f9 !important;
                 border-radius: 6px !important;
             }}
-            
+
             .ai-narrative-scrollable::-webkit-scrollbar-thumb {{
                 background: #cbd5e1 !important;
                 border-radius: 6px !important;
                 border: 1px solid #e2e8f0 !important;
             }}
-            
+
             .ai-narrative-scrollable::-webkit-scrollbar-thumb:hover {{
                 background: #94a3b8 !important;
             }}
-            
+
             /* ===== LANDING PAGE SCROLLBAR ===== */
             .landing-scrollable {{
                 scrollbar-width: thin !important;
                 scrollbar-color: #cbd5e1 #f1f5f9 !important;
             }}
-            
+
             .landing-scrollable::-webkit-scrollbar {{
                 width: 6px !important;
             }}
-            
+
             .landing-scrollable::-webkit-scrollbar-track {{
                 background: #f1f5f9 !important;
                 border-radius: 6px !important;
             }}
-            
+
             .landing-scrollable::-webkit-scrollbar-thumb {{
                 background: #cbd5e1 !important;
                 border-radius: 6px !important;
                 border: 1px solid #e2e8f0 !important;
             }}
-            
+
             .landing-scrollable::-webkit-scrollbar-thumb:hover {{
                 background: #94a3b8 !important;
             }}
-            
+
             /* ===== NARRATIVE TEXT FORMATTING ===== */
             .ai-narrative-scrollable em {{
                 font-style: italic;
             }}
-            
+
             .ai-narrative-scrollable .citation {{
             }}
         </style>
     </head>
     <body>
+        <!-- DEVICE WARNING - SHOWN ON TABLETS AND PHONES (NO CONTINUE BUTTON) -->
+        <div class="device-warning" id="device-warning">
+            <div class="icon">⚠️</div>
+            <h2>Desktop View Recommended</h2>
+            <p>For optimal performance and full access to all interactive features, please view this application on a desktop or laptop computer.</p>
+        </div>
+
         {{%app_entry%}}
         <footer>
             {{%config%}}
@@ -325,5 +373,5 @@ if __name__ == '__main__':
     print(f"  7 - Vocabulary Profile")
     print(f"  8 - Media Flow Overview")
     print("=" * 60)
-    
+
     app.run(debug=True, port=8050)
