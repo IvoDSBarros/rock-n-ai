@@ -140,13 +140,13 @@ Each section is post-processed into JSON paragraphs tagged by view number (2-8) 
 
 ```
 rock-n-ai/
-├── app.py		                              # Main Dash application
+├── app.py   # Main Dash application
 ├── tools/
-│   └── narrative_generator.py               # CrewAI narrative generation
-├── requirements.txt	# Dependencies
-├── Procfile                           		# For deployment (Heroku)
-├── README.md		                           # Project documentation
-├── LICENSE		# MIT License
+│   └── narrative_generator.py   # CrewAI narrative generation
+├── requirements.txt   # Dependencies
+├── Procfile   # For deployment (Heroku)
+├── README.md   # Project documentation
+├── LICENSE   # MIT License
 ├── assets/
 │   └── images/
 │       ├── pic_bob_dylan.jpg
